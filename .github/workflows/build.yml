@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Buat berkas proyek (1/8)
+      - name: Buat berkas proyek (1/10)
         run: |
           mkdir -p "$(dirname ".gitignore")"
           cat > ".gitignore" <<'__END__'
@@ -47,7 +47,9 @@ jobs:
           - Hanya proses latar belakang yang bisa dihentikan. Aplikasi di layar, layanan foreground, dan aplikasi sistem inti tidak tersentuh; aplikasi dengan layanan sticky/alarm bisa hidup lagi.
           - Android sudah menghitung memori cache sebagai "tersedia", jadi kenaikan RAM bebas bisa kecil atau nol. Aplikasi yang dimatikan dibuka lebih lambat dan bisa lebih boros baterai.
           - Beberapa merek (MIUI, One UI, ColorOS) punya pembatasan tambahan.
-          - Widget dan aplikasi mematikan prosesnya sendiri setelah selesai; widget menunggu sekitar 2 detik agar Toast sempat tampil.
+          - Aplikasi tidak menutup sendiri: gunakan tombol Tutup di kanan atas. Widget mematikan prosesnya setelah Toast (sekitar 2 detik), kecuali layar aplikasi sedang terbuka.
+          - Android 10 tidak mengizinkan aplikasi biasa membaca RAM aplikasi lain (hanya sistem/ADB). Angka MB per aplikasi tersedia di Opsi Pengembang > Layanan berjalan; layar Aplikasi aktif hanya menampilkan urutan terakhir dipakai.
+          - Aplikasi dengan layanan foreground/notifikasi tetap (misalnya yang terus berjalan) tidak bisa dimatikan dengan killBackgroundProcesses. Gunakan tombol Paksa lalu Paksa berhenti di info aplikasi.
           - APK debug bertanda tangan debug; Play Protect bisa memberi peringatan. QUERY_ALL_PACKAGES dibatasi Google Play, tetapi aman untuk instal manual.
           __END__
           mkdir -p "$(dirname "app/build.gradle.kts")"
@@ -68,6 +70,17 @@ jobs:
                   targetSdk = 36
                   versionCode = 1
                   versionName = "1.0"
+              }
+
+              // Kunci debug tetap: APK hasil build berikutnya bisa menimpa (update) tanpa copot dulu.
+              signingConfigs {
+                  getByName("debug") {
+                      storeFile = file("debug.keystore")
+                      storePassword = "android"
+                      keyAlias = "androiddebugkey"
+                      keyPassword = "android"
+                      storeType = "pkcs12"
+                  }
               }
 
               buildTypes {
@@ -91,6 +104,59 @@ jobs:
               implementation("androidx.datastore:datastore-preferences:1.1.1")
               implementation("androidx.core:core-ktx:1.15.0")
           }
+          __END__
+
+      - name: Buat berkas proyek (2/10)
+        run: |
+          mkdir -p "$(dirname "app/debug.keystore")"
+          base64 -d > "app/debug.keystore" <<'__END__'
+          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
           __END__
           mkdir -p "$(dirname "app/src/main/AndroidManifest.xml")"
           cat > "app/src/main/AndroidManifest.xml" <<'__END__'
@@ -140,7 +206,7 @@ jobs:
           </manifest>
           __END__
 
-      - name: Buat berkas proyek (2/8)
+      - name: Buat berkas proyek (3/10)
         run: |
           mkdir -p "$(dirname "app/src/main/java/com/ramlega/MainActivity.kt")"
           cat > "app/src/main/java/com/ramlega/MainActivity.kt" <<'__END__'
@@ -159,12 +225,29 @@ jobs:
                   super.onCreate(savedInstanceState)
                   setContent {
                       RamLegaTheme {
+                          // Hanya menutup saat tombol "Tutup" di kanan atas ditekan.
                           App(onClose = { vm ->
                               vm.cancelAll()      // batalkan semua coroutine
                               closeCompletely()   // tutup task + matikan proses
                           })
                       }
                   }
+              }
+
+              override fun onStart() {
+                  super.onStart()
+                  visible = true
+              }
+
+              override fun onStop() {
+                  visible = false
+                  super.onStop()
+              }
+
+              companion object {
+                  /** Dibaca widget: jangan matikan proses bila layar aplikasi sedang terbuka. */
+                  @Volatile
+                  var visible = false
               }
           }
 
@@ -204,14 +287,13 @@ jobs:
           }
           __END__
 
-      - name: Buat berkas proyek (3/8)
+      - name: Buat berkas proyek (4/10)
         run: |
           mkdir -p "$(dirname "app/src/main/java/com/ramlega/domain/CleanRamUseCase.kt")"
           cat > "app/src/main/java/com/ramlega/domain/CleanRamUseCase.kt" <<'__END__'
           package com.ramlega.domain
 
           import android.app.ActivityManager
-          import android.app.usage.UsageStatsManager
           import android.content.Context
           import android.content.pm.ApplicationInfo
           import com.ramlega.data.ExclusionRepository
@@ -247,35 +329,46 @@ jobs:
                   return RamInfo(mi.totalMem shr 20, mi.availMem shr 20)
               }
 
+              /** Aplikasi yang boleh dihentikan (di luar pengecualian dan sistem penting). */
+              suspend fun targets(): List<ApplicationInfo> = withContext(Dispatchers.Default) {
+                  val excluded = repo.excluded.first() + ProtectedApps.automatic(ctx)
+                  val pm = ctx.packageManager
+                  pm.getInstalledApplications(0).filter {
+                      it.enabled &&
+                          it.packageName !in excluded &&
+                          it.flags and ApplicationInfo.FLAG_STOPPED == 0 &&
+                          ProtectedApps.isKillable(pm, it)
+                  }
+              }
+
+              /** Hentikan satu aplikasi. false bila sistem menolak izin. */
+              fun kill(pkg: String): Boolean = try {
+                  am.killBackgroundProcesses(pkg)
+                  true
+              } catch (e: SecurityException) {
+                  false
+              } catch (e: Exception) {
+                  true
+              }
+
               suspend operator fun invoke(onProgress: (Float) -> Unit = {}): CleanResult =
                   withContext(Dispatchers.Default) {
                       val before = ramInfo()
-                      val excluded = repo.excluded.first() + ProtectedApps.automatic(ctx)
-                      val pm = ctx.packageManager
-                      val targets = pm.getInstalledApplications(0).filter {
-                          it.enabled &&
-                              it.packageName !in excluded &&
-                              it.flags and ApplicationInfo.FLAG_STOPPED == 0 &&
-                              ProtectedApps.isKillable(pm, it)
-                      }
-                      val active = estimateActive(targets)
+                      val apps = targets()
+                      val active = estimateActive(apps)
 
                       var best = before.freeMb
                       var rounds = 0
                       var denied = false
                       for (round in 1..MAX_ROUNDS) {
                           rounds = round
-                          for ((i, app) in targets.withIndex()) {
+                          for ((i, app) in apps.withIndex()) {
                               ensureActive()
-                              try {
-                                  am.killBackgroundProcesses(app.packageName)
-                              } catch (e: SecurityException) {
+                              if (!kill(app.packageName)) {
                                   denied = true
                                   break
-                              } catch (e: Exception) {
-                                  // aplikasi sudah mati / tidak bisa dihentikan: lanjut
                               }
-                              onProgress(((round - 1) + (i + 1f) / targets.size) / MAX_ROUNDS)
+                              onProgress(((round - 1) + (i + 1f) / apps.size) / MAX_ROUNDS)
                           }
                           if (denied) break
                           delay(PAUSE_MS)
@@ -289,18 +382,10 @@ jobs:
                   }
 
               /** Perkiraan: dengan izin Usage Access, hanya hitung aplikasi yang aktif 12 jam terakhir. */
-              private fun estimateActive(targets: List<ApplicationInfo>): Int {
-                  if (!UsageAccess.isGranted(ctx)) return targets.size
-                  return try {
-                      val usm = ctx.getSystemService(UsageStatsManager::class.java)
-                      val now = System.currentTimeMillis()
-                      val since = now - 12 * 3_600_000L
-                      val recent = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, since, now)
-                          .orEmpty().filter { it.lastTimeUsed >= since }.map { it.packageName }.toSet()
-                      targets.count { it.packageName in recent }
-                  } catch (e: Exception) {
-                      targets.size
-                  }
+              private fun estimateActive(apps: List<ApplicationInfo>): Int {
+                  if (!UsageAccess.isGranted(ctx)) return apps.size
+                  val recent = UsageAccess.lastUsed(ctx, 12 * 3_600_000L).keys
+                  return apps.count { it.packageName in recent }
               }
 
               private companion object {
@@ -311,7 +396,7 @@ jobs:
           }
           __END__
 
-      - name: Buat berkas proyek (4/8)
+      - name: Buat berkas proyek (5/10)
         run: |
           mkdir -p "$(dirname "app/src/main/java/com/ramlega/domain/ProtectedApps.kt")"
           cat > "app/src/main/java/com/ramlega/domain/ProtectedApps.kt" <<'__END__'
@@ -360,6 +445,7 @@ jobs:
           package com.ramlega.domain
 
           import android.app.AppOpsManager
+          import android.app.usage.UsageStatsManager
           import android.content.Context
           import android.content.Intent
           import android.os.Build
@@ -380,6 +466,71 @@ jobs:
 
               fun settingsIntent(): Intent =
                   Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+              /** Paket -> waktu terakhir dipakai (ms) dalam [withinMs] terakhir. Kosong bila izin belum diberikan. */
+              fun lastUsed(ctx: Context, withinMs: Long): Map<String, Long> {
+                  if (!isGranted(ctx)) return emptyMap()
+                  return try {
+                      val usm = ctx.getSystemService(UsageStatsManager::class.java)
+                      val now = System.currentTimeMillis()
+                      val since = now - withinMs
+                      usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, since, now).orEmpty()
+                          .filter { it.lastTimeUsed >= since }
+                          .groupBy { it.packageName }
+                          .mapValues { e -> e.value.maxOf { it.lastTimeUsed } }
+                  } catch (e: Exception) {
+                      emptyMap()
+                  }
+              }
+          }
+          __END__
+
+      - name: Buat berkas proyek (6/10)
+        run: |
+          mkdir -p "$(dirname "app/src/main/java/com/ramlega/ui/ActiveAppsViewModel.kt")"
+          cat > "app/src/main/java/com/ramlega/ui/ActiveAppsViewModel.kt" <<'__END__'
+          package com.ramlega.ui
+
+          import android.app.Application
+          import androidx.lifecycle.AndroidViewModel
+          import androidx.lifecycle.viewModelScope
+          import com.ramlega.domain.CleanRamUseCase
+          import com.ramlega.domain.UsageAccess
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.flow.MutableStateFlow
+          import kotlinx.coroutines.flow.StateFlow
+          import kotlinx.coroutines.flow.asStateFlow
+          import kotlinx.coroutines.launch
+
+          data class ActiveApp(val pkg: String, val label: String, val lastUsed: Long?)
+
+          class ActiveAppsViewModel(app: Application) : AndroidViewModel(app) {
+              private val useCase = CleanRamUseCase(app)
+              private val _apps = MutableStateFlow<List<ActiveApp>>(emptyList())
+              private val _loading = MutableStateFlow(true)
+
+              val apps: StateFlow<List<ActiveApp>> = _apps.asStateFlow()
+              val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
+              /** Urut dari yang terakhir dipakai. Bila izin Usage Access ada, hanya yang dipakai 24 jam terakhir. */
+              fun load() {
+                  viewModelScope.launch(Dispatchers.Default) {
+                      _loading.value = true
+                      val application = getApplication<Application>()
+                      val pm = application.packageManager
+                      val used = UsageAccess.lastUsed(application, 24 * 3_600_000L)
+                      val list = useCase.targets()
+                          .map { ActiveApp(it.packageName, it.loadLabel(pm).toString(), used[it.packageName]) }
+                          .filter { used.isEmpty() || it.lastUsed != null }
+                          .sortedWith(compareByDescending<ActiveApp> { it.lastUsed ?: 0L }.thenBy { it.label.lowercase() })
+                      _apps.value = list
+                      _loading.value = false
+                  }
+              }
+
+              fun kill(pkg: String) {
+                  viewModelScope.launch(Dispatchers.Default) { useCase.kill(pkg) }
+              }
           }
           __END__
           mkdir -p "$(dirname "app/src/main/java/com/ramlega/ui/ExclusionsViewModel.kt")"
@@ -432,7 +583,7 @@ jobs:
           }
           __END__
 
-      - name: Buat berkas proyek (5/8)
+      - name: Buat berkas proyek (7/10)
         run: |
           mkdir -p "$(dirname "app/src/main/java/com/ramlega/ui/MainViewModel.kt")"
           cat > "app/src/main/java/com/ramlega/ui/MainViewModel.kt" <<'__END__'
@@ -490,12 +641,17 @@ jobs:
           }
           __END__
 
-      - name: Buat berkas proyek (6/8)
+      - name: Buat berkas proyek (8/10)
         run: |
           mkdir -p "$(dirname "app/src/main/java/com/ramlega/ui/Screens.kt")"
           cat > "app/src/main/java/com/ramlega/ui/Screens.kt" <<'__END__'
           package com.ramlega.ui
 
+          import android.content.Context
+          import android.content.Intent
+          import android.net.Uri
+          import android.provider.Settings
+          import android.widget.Toast
           import androidx.activity.compose.BackHandler
           import androidx.compose.animation.core.animateFloatAsState
           import androidx.compose.animation.core.tween
@@ -513,6 +669,8 @@ jobs:
           import androidx.compose.foundation.layout.systemBarsPadding
           import androidx.compose.foundation.lazy.LazyColumn
           import androidx.compose.foundation.lazy.items
+          import androidx.compose.foundation.rememberScrollState
+          import androidx.compose.foundation.verticalScroll
           import androidx.compose.material3.Button
           import androidx.compose.material3.Card
           import androidx.compose.material3.CircularProgressIndicator
@@ -542,11 +700,8 @@ jobs:
           import androidx.lifecycle.compose.collectAsStateWithLifecycle
           import androidx.lifecycle.viewmodel.compose.viewModel
           import com.ramlega.domain.UsageAccess
-          import kotlinx.coroutines.delay
 
-          private const val CLOSE_DELAY_MS = 3500L
-
-          private enum class Screen { Home, Exclusions, Usage }
+          private enum class Screen { Home, Active, Exclusions, Usage }
 
           @Composable
           fun App(onClose: (MainViewModel) -> Unit) {
@@ -555,10 +710,12 @@ jobs:
               Surface(Modifier.fillMaxSize()) {
                   when (screen) {
                       Screen.Home -> HomeScreen(
+                          onActive = { screen = Screen.Active },
                           onExclusions = { screen = Screen.Exclusions },
                           onUsage = { screen = Screen.Usage },
                           onClose = onClose,
                       )
+                      Screen.Active -> ActiveAppsScreen(onBack = { screen = Screen.Home })
                       Screen.Exclusions -> ExclusionsScreen(onBack = { screen = Screen.Home })
                       Screen.Usage -> UsageScreen(onBack = { screen = Screen.Home })
                   }
@@ -567,6 +724,7 @@ jobs:
 
           @Composable
           private fun HomeScreen(
+              onActive: () -> Unit,
               onExclusions: () -> Unit,
               onUsage: () -> Unit,
               onClose: (MainViewModel) -> Unit,
@@ -575,66 +733,166 @@ jobs:
               val s by vm.state.collectAsStateWithLifecycle()
               LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.refresh() }
 
-              // Setelah selesai: beri waktu membaca hasil, lalu tutup total.
-              LaunchedEffect(s.result) {
-                  if (s.result != null) {
-                      delay(CLOSE_DELAY_MS)
-                      onClose(vm)
-                  }
-              }
-
               val target = if (s.running) s.progress else s.ram.freePercent / 100f
               val ring by animateFloatAsState(target, tween(600), label = "ring")
 
-              Column(
-                  Modifier.fillMaxSize().systemBarsPadding().padding(24.dp),
-                  horizontalAlignment = Alignment.CenterHorizontally,
-                  verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
-              ) {
-                  Text("RAM Lega", style = MaterialTheme.typography.headlineMedium)
-                  Box(Modifier.size(180.dp), contentAlignment = Alignment.Center) {
-                      CircularProgressIndicator(progress = { ring }, modifier = Modifier.fillMaxSize(), strokeWidth = 12.dp)
-                      Text("${(ring * 100).toInt()}%", style = MaterialTheme.typography.headlineLarge)
+              Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp)) {
+                  Row(
+                      Modifier.fillMaxWidth(),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                  ) {
+                      Text("RAM Lega", style = MaterialTheme.typography.headlineMedium)
+                      TextButton(onClick = { onClose(vm) }) { Text("Tutup \u2715") }
                   }
-                  Text(
-                      if (s.running) "Membersihkan..."
-                      else "RAM bebas ${s.ram.freeMb} MB dari ${s.ram.totalMb} MB (${s.ram.freePercent}%)"
-                  )
 
-                  s.result?.let { r ->
-                      Card(Modifier.fillMaxWidth()) {
-                          Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                              Text("Sebelum: ${r.before.freeMb} MB (${r.before.freePercent}%)")
-                              Text("Sesudah: ${r.after.freeMb} MB (${r.after.freePercent}%)")
-                              Text("Dibebaskan: ${r.freedMb} MB", fontWeight = FontWeight.Bold)
-                              Text("Aplikasi diproses: ${r.appsProcessed} (perkiraan), ${r.rounds} putaran")
-                              if (r.denied) {
-                                  Text("Sistem menolak izin menghentikan proses.", color = MaterialTheme.colorScheme.error)
+                  Column(
+                      Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                      horizontalAlignment = Alignment.CenterHorizontally,
+                      verticalArrangement = Arrangement.spacedBy(16.dp),
+                  ) {
+                      Spacer(Modifier.height(8.dp))
+                      Box(Modifier.size(180.dp), contentAlignment = Alignment.Center) {
+                          CircularProgressIndicator(progress = { ring }, modifier = Modifier.fillMaxSize(), strokeWidth = 12.dp)
+                          Text("${(ring * 100).toInt()}%", style = MaterialTheme.typography.headlineLarge)
+                      }
+                      Text(
+                          if (s.running) "Membersihkan..."
+                          else "RAM bebas ${s.ram.freeMb} MB dari ${s.ram.totalMb} MB (${s.ram.freePercent}%)"
+                      )
+
+                      s.result?.let { r ->
+                          Card(Modifier.fillMaxWidth()) {
+                              Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                  Text("Sebelum: ${r.before.freeMb} MB (${r.before.freePercent}%)")
+                                  Text("Sesudah: ${r.after.freeMb} MB (${r.after.freePercent}%)")
+                                  Text("Dibebaskan: ${r.freedMb} MB", fontWeight = FontWeight.Bold)
+                                  Text("Aplikasi diproses: ${r.appsProcessed} (perkiraan), ${r.rounds} putaran")
+                                  if (r.denied) {
+                                      Text("Sistem menolak izin menghentikan proses.", color = MaterialTheme.colorScheme.error)
+                                  }
                               }
-                              Text("Aplikasi menutup otomatis...", style = MaterialTheme.typography.bodySmall)
                           }
                       }
-                  }
 
-                  Button(
-                      onClick = vm::clean,
-                      enabled = !s.running && s.result == null,
-                      modifier = Modifier.fillMaxWidth().height(56.dp),
-                  ) { Text("Bersihkan") }
+                      Button(
+                          onClick = vm::clean,
+                          enabled = !s.running,
+                          modifier = Modifier.fillMaxWidth().height(56.dp),
+                      ) { Text(if (s.result == null) "Bersihkan" else "Bersihkan lagi") }
 
-                  if (s.result != null) {
-                      OutlinedButton(onClick = { onClose(vm) }, modifier = Modifier.fillMaxWidth()) {
-                          Text("Tutup sekarang")
+                      OutlinedButton(onClick = onActive, enabled = !s.running, modifier = Modifier.fillMaxWidth()) {
+                          Text("Aplikasi aktif")
                       }
-                  } else {
                       OutlinedButton(onClick = onExclusions, enabled = !s.running, modifier = Modifier.fillMaxWidth()) {
                           Text("Daftar Pengecualian")
                       }
                       if (!s.usageGranted) {
-                          TextButton(onClick = onUsage, enabled = !s.running) { Text("Perkiraan lebih akurat (opsional)") }
+                          TextButton(onClick = onUsage, enabled = !s.running) { Text("Aktifkan Akses Penggunaan (opsional)") }
                       }
                   }
               }
+          }
+
+          @Composable
+          private fun ActiveAppsScreen(onBack: () -> Unit, vm: ActiveAppsViewModel = viewModel()) {
+              val ctx = LocalContext.current
+              val apps by vm.apps.collectAsStateWithLifecycle()
+              val loading by vm.loading.collectAsStateWithLifecycle()
+              var stopped by remember { mutableStateOf(setOf<String>()) }
+              LaunchedEffect(Unit) { vm.load() }
+
+              Column(Modifier.fillMaxSize().systemBarsPadding()) {
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                      TextButton(onClick = onBack) { Text("< Kembali") }
+                      Text("Aplikasi aktif", style = MaterialTheme.typography.titleLarge)
+                  }
+                  Text(
+                      "Android 10 tidak mengizinkan aplikasi biasa membaca RAM aplikasi lain, jadi angka MB " +
+                          "tidak bisa ditampilkan di sini. Daftar ini diurutkan dari yang terakhir dipakai " +
+                          "(butuh Akses Penggunaan). \"Hentikan\" mematikan proses latar belakang; untuk yang " +
+                          "membandel, \"Paksa\" membuka halaman info aplikasi tempat tombol Paksa berhenti.",
+                      style = MaterialTheme.typography.bodySmall,
+                      modifier = Modifier.padding(horizontal = 16.dp),
+                  )
+                  OutlinedButton(
+                      onClick = { openRunningServices(ctx) },
+                      modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                  ) { Text("Lihat RAM per aplikasi (bawaan sistem)") }
+
+                  if (loading) {
+                      Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                  } else {
+                      LazyColumn(Modifier.fillMaxSize()) {
+                          items(apps, key = { it.pkg }) { a ->
+                              ActiveRow(
+                                  app = a,
+                                  stopped = a.pkg in stopped,
+                                  onStop = { vm.kill(a.pkg); stopped = stopped + a.pkg },
+                                  onForce = { openAppInfo(ctx, a.pkg) },
+                              )
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          private fun ActiveRow(app: ActiveApp, stopped: Boolean, onStop: () -> Unit, onForce: () -> Unit) {
+              Row(
+                  Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+              ) {
+                  AppIcon(app.pkg)
+                  Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                      Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                      Text(ago(app.lastUsed), style = MaterialTheme.typography.bodySmall)
+                  }
+                  TextButton(onClick = onStop, enabled = !stopped) { Text(if (stopped) "Dihentikan" else "Hentikan") }
+                  TextButton(onClick = onForce) { Text("Paksa") }
+              }
+          }
+
+          private fun ago(t: Long?): String {
+              if (t == null) return "Tidak ada data pemakaian"
+              val m = (System.currentTimeMillis() - t) / 60_000
+              return when {
+                  m < 1 -> "Baru saja dipakai"
+                  m < 60 -> "Dipakai $m menit lalu"
+                  else -> "Dipakai ${m / 60} jam lalu"
+              }
+          }
+
+          private fun openAppInfo(ctx: Context, pkg: String) {
+              try {
+                  ctx.startActivity(
+                      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))
+                          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                  )
+              } catch (e: Exception) {
+                  Toast.makeText(ctx, "Tidak bisa membuka info aplikasi", Toast.LENGTH_SHORT).show()
+              }
+          }
+
+          /** Layar "Layanan berjalan" di Opsi Pengembang menampilkan RAM tiap aplikasi (angka asli dari sistem). */
+          private fun openRunningServices(ctx: Context) {
+              val tries = listOf(
+                  Intent().setClassName("com.android.settings", "com.android.settings.Settings\$DevRunningServicesActivity"),
+                  Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
+              )
+              for (i in tries) {
+                  try {
+                      ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                      return
+                  } catch (e: Exception) {
+                      // coba cara berikutnya
+                  }
+              }
+              Toast.makeText(
+                  ctx,
+                  "Aktifkan Opsi Pengembang: Pengaturan > Tentang ponsel > ketuk Nomor build 7 kali",
+                  Toast.LENGTH_LONG,
+              ).show()
           }
 
           @Composable
@@ -664,17 +922,22 @@ jobs:
           }
 
           @Composable
-          private fun AppRow(app: AppItem, checked: Boolean, onChange: (Boolean) -> Unit) {
+          private fun AppIcon(pkg: String) {
               val ctx = LocalContext.current
-              val icon = remember(app.pkg) {
-                  runCatching { ctx.packageManager.getApplicationIcon(app.pkg).toBitmap(96, 96).asImageBitmap() }.getOrNull()
+              val icon = remember(pkg) {
+                  runCatching { ctx.packageManager.getApplicationIcon(pkg).toBitmap(96, 96).asImageBitmap() }.getOrNull()
               }
+              if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(40.dp))
+              else Spacer(Modifier.size(40.dp))
+          }
+
+          @Composable
+          private fun AppRow(app: AppItem, checked: Boolean, onChange: (Boolean) -> Unit) {
               Row(
                   Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                   verticalAlignment = Alignment.CenterVertically,
               ) {
-                  if (icon != null) Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(40.dp))
-                  else Spacer(Modifier.size(40.dp))
+                  AppIcon(app.pkg)
                   Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                       Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                       Text(
@@ -699,16 +962,16 @@ jobs:
                   Text("Akses Penggunaan (opsional)", style = MaterialTheme.typography.titleLarge)
                   Text(
                       "Android tidak memberi tahu aplikasi mana yang sedang berjalan. Dengan izin ini, " +
-                          "RAM Lega hanya memakainya untuk memperkirakan jumlah aplikasi yang aktif dalam " +
-                          "12 jam terakhir. Data tidak disimpan dan tidak dikirim ke mana pun. " +
-                          "Pembersihan tetap bekerja tanpa izin ini."
+                          "RAM Lega memakainya untuk memperkirakan aplikasi yang aktif dalam 12-24 jam " +
+                          "terakhir dan mengurutkan daftar Aplikasi aktif. Data tidak disimpan dan tidak " +
+                          "dikirim ke mana pun. Pembersihan tetap bekerja tanpa izin ini."
                   )
                   Button(onClick = { ctx.startActivity(UsageAccess.settingsIntent()) }) { Text("Buka pengaturan") }
               }
           }
           __END__
 
-      - name: Buat berkas proyek (7/8)
+      - name: Buat berkas proyek (9/10)
         run: |
           mkdir -p "$(dirname "app/src/main/java/com/ramlega/ui/Theme.kt")"
           cat > "app/src/main/java/com/ramlega/ui/Theme.kt" <<'__END__'
@@ -751,6 +1014,7 @@ jobs:
           import android.os.Process
           import android.widget.RemoteViews
           import android.widget.Toast
+          import com.ramlega.MainActivity
           import com.ramlega.R
           import com.ramlega.domain.CleanRamUseCase
           import kotlinx.coroutines.CoroutineScope
@@ -792,7 +1056,8 @@ jobs:
                           // jangan crash dari widget
                       } finally {
                           pending.finish()
-                          Process.killProcess(Process.myPid())
+                          // Jangan matikan proses bila layar aplikasi sedang terbuka.
+                          if (!MainActivity.visible) Process.killProcess(Process.myPid())
                       }
                   }
               }
@@ -839,6 +1104,9 @@ jobs:
               <solid android:color="#1E8E5A" />
           </shape>
           __END__
+
+      - name: Buat berkas proyek (10/10)
+        run: |
           mkdir -p "$(dirname "app/src/main/res/layout/widget.xml")"
           cat > "app/src/main/res/layout/widget.xml" <<'__END__'
           <?xml version="1.0" encoding="utf-8"?>
@@ -857,9 +1125,6 @@ jobs:
                   android:src="@drawable/ic_broom" />
           </FrameLayout>
           __END__
-
-      - name: Buat berkas proyek (8/8)
-        run: |
           mkdir -p "$(dirname "app/src/main/res/mipmap-anydpi/ic_launcher.xml")"
           cat > "app/src/main/res/mipmap-anydpi/ic_launcher.xml" <<'__END__'
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
