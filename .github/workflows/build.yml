@@ -951,10 +951,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Pasang platform Android 36
-        run: sdkmanager --install "platforms;android-36" "build-tools;35.0.0"
+      - name: Siapkan Android SDK (bawaan runner)
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platforms;android-36" "build-tools;35.0.0" || echo "lanjut, Gradle akan mengunduh sendiri"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -978,4 +979,3 @@ jobs:
           name: RAM Lega (terbaru)
           files: RAM-Lega.apk
           make_latest: true
-
